@@ -4,7 +4,6 @@ use hex;
 use libc::{O_RDWR, O_SYNC};
 use memmap::MmapOptions;
 use std::fs::OpenOptions;
-use std::io;
 use std::{error::Error, os::unix::prelude::OpenOptionsExt};
 use tui::{
     backend::Backend,
@@ -281,7 +280,7 @@ impl Devmem {
         self.write_value.clear();
     }
 
-    fn handle_events(&mut self, key: KeyEvent) -> io::Result<()> {
+    fn handle_events(&mut self, key: KeyEvent) -> std::io::Result<()> {
         match self.mode {
             OpMode::Normal => match key.code {
                 KeyCode::PageDown | KeyCode::Char('n') => self.next_page(),
@@ -328,7 +327,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut dm: Devmem) -> io::Result<()> {
+fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut dm: Devmem) -> std::io::Result<()> {
     loop {
         terminal.draw(|f| draw(f, &mut dm))?;
 

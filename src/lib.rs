@@ -4,17 +4,16 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::error::Error;
-use std::io;
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
     Terminal,
 };
 
-pub fn init_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>, Box<dyn Error>> {
-    execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+pub fn init_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>, Box<dyn Error>> {
+    execute!(std::io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
     enable_raw_mode()?;
-    let backend = CrosstermBackend::new(io::stdout());
+    let backend = CrosstermBackend::new(std::io::stdout());
     let mut terminal = Terminal::new(backend)?;
     terminal.hide_cursor()?;
     Ok(terminal)
@@ -22,7 +21,7 @@ pub fn init_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>, Box<dyn
 
 pub fn reset_terminal() -> Result<(), Box<dyn Error>> {
     disable_raw_mode()?;
-    execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+    execute!(std::io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
     Ok(())
 }
 
@@ -70,3 +69,4 @@ enum OpMode {
 
 pub mod app;
 pub mod devmem;
+pub mod io;
