@@ -1,4 +1,4 @@
-use super::Cell;
+use super::{Cell, OpMode};
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use hex;
 use libc::{O_RDWR, O_SYNC};
@@ -166,19 +166,12 @@ impl WriteValue {
 }
 
 #[derive(Debug)]
-enum Mode {
-    Normal,
-    Jump,
-    Edit,
-}
-
-#[derive(Debug)]
 struct Devmem {
     columns: u64,
     rows: u64,
     offset: u64,
     data: Vec<Cell>,
-    mode: Mode,
+    mode: OpMode,
     jump_addr: String,
     write_value: String,
 }
@@ -190,7 +183,7 @@ impl Devmem {
             rows: 16,
             offset: 0,
             data: vec![],
-            mode: Mode::Normal,
+            mode: OpMode::Normal,
             jump_addr: String::new(),
             write_value: String::new(),
         };
@@ -271,7 +264,7 @@ impl Devmem {
         if let Some(addr) = JumpAddress::new(&self.jump_addr).parse(self.offset) {
             self.offset = addr;
             self.get_data();
-            self.mode = Mode::Normal;
+            self.mode = OpMode::Normal;
         }
         self.jump_addr.clear();
     }
@@ -281,7 +274,7 @@ impl Devmem {
         if let Some(bytes) = WriteValue::new(&self.write_value).parse() {
             write(self.offset, bytes);
             self.get_data();
-            self.mode = Mode::Normal;
+            self.mode = OpMode::Normal;
         }
 
         // reset edit value
@@ -290,33 +283,33 @@ impl Devmem {
 
     fn handle_events(&mut self, key: KeyEvent) -> io::Result<()> {
         match self.mode {
-            Mode::Normal => match key.code {
+            OpMode::Normal => match key.code {
                 KeyCode::PageDown | KeyCode::Char('n') => self.next_page(),
                 KeyCode::PageUp | KeyCode::Char('p') => self.prev_page(),
                 KeyCode::Right | KeyCode::Char('l') => self.next_byte(),
                 KeyCode::Left | KeyCode::Char('h') => self.prev_byte(),
                 KeyCode::Up | KeyCode::Char('k') => self.prev_line(),
                 KeyCode::Down | KeyCode::Char('j') => self.next_line(),
-                KeyCode::Char('J') => self.mode = Mode::Jump,
-                KeyCode::Char('e') => self.mode = Mode::Edit,
+                KeyCode::Char('J') => self.mode = OpMode::Jump,
+                KeyCode::Char('e') => self.mode = OpMode::Edit,
                 _ => (),
             },
-            Mode::Jump => match key.code {
+            OpMode::Jump => match key.code {
                 KeyCode::Char(c) => self.jump_addr.push(c),
                 KeyCode::Backspace => {
                     self.jump_addr.pop();
                 }
                 KeyCode::Enter => self.jump_to(),
-                KeyCode::Esc => self.mode = Mode::Normal,
+                KeyCode::Esc => self.mode = OpMode::Normal,
                 _ => (),
             },
-            Mode::Edit => match key.code {
+            OpMode::Edit => match key.code {
                 KeyCode::Char(c) => self.write_value.push(c),
                 KeyCode::Backspace => {
                     self.write_value.pop();
                 }
                 KeyCode::Enter => self.edit(),
-                KeyCode::Esc => self.mode = Mode::Normal,
+                KeyCode::Esc => self.mode = OpMode::Normal,
                 _ => (),
             },
         }
@@ -417,7 +410,7 @@ fn draw_status_bar<B: Backend>(f: &mut Frame<B>, area: Rect, app: &Devmem) {
 fn draw_jump<B: Backend>(f: &mut Frame<B>, app: &Devmem) {
     let input = Paragraph::new(app.jump_addr.as_ref())
         .style(match app.mode {
-            Mode::Jump => Style::default().fg(Color::Green),
+            OpMode::Jump => Style::default().fg(Color::Green),
             _ => Style::default(),
         })
         .block(
@@ -429,7 +422,7 @@ fn draw_jump<B: Backend>(f: &mut Frame<B>, app: &Devmem) {
     f.render_widget(Clear, area);
     f.render_widget(input, area);
     match app.mode {
-        Mode::Jump => f.set_cursor(area.x + 1 + app.jump_addr.width() as u16, area.y + 1),
+        OpMode::Jump => f.set_cursor(area.x + 1 + app.jump_addr.width() as u16, area.y + 1),
         _ => {}
     }
 }
@@ -437,7 +430,7 @@ fn draw_jump<B: Backend>(f: &mut Frame<B>, app: &Devmem) {
 fn draw_edit<B: Backend>(f: &mut Frame<B>, app: &Devmem) {
     let edit = Paragraph::new(app.write_value.as_ref())
         .style(match app.mode {
-            Mode::Edit => Style::default().fg(Color::Green),
+            OpMode::Edit => Style::default().fg(Color::Green),
             _ => Style::default(),
         })
         .block(
@@ -451,7 +444,7 @@ fn draw_edit<B: Backend>(f: &mut Frame<B>, app: &Devmem) {
     f.render_widget(edit, area);
 
     match app.mode {
-        Mode::Edit => f.set_cursor(area.x + 1 + app.write_value.width() as u16, area.y + 1),
+        OpMode::Edit => f.set_cursor(area.x + 1 + app.write_value.width() as u16, area.y + 1),
         _ => {}
     }
 }
@@ -493,8 +486,8 @@ fn draw<B: Backend>(f: &mut Frame<B>, app: &mut Devmem) {
     draw_status_bar(f, status_chunk, &app);
 
     match app.mode {
-        Mode::Jump => draw_jump(f, app),
-        Mode::Edit => draw_edit(f, app),
+        OpMode::Jump => draw_jump(f, app),
+        OpMode::Edit => draw_edit(f, app),
         _ => {}
     }
 }

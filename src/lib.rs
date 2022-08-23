@@ -61,5 +61,12 @@ impl Cell {
     }
 }
 
+#[derive(Debug)]
+enum OpMode {
+    Normal,
+    Jump,
+    Edit,
+}
+
 pub mod app;
 pub mod devmem;
