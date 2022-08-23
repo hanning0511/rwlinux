@@ -30,21 +30,35 @@ pub fn reset_terminal() -> Result<(), Box<dyn Error>> {
 pub fn centered_rect(width: u16, height: u16, r: Rect) -> Rect {
     let l = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Length((r.height - height) / 2),
-                Constraint::Length(height),
-                Constraint::Min(0),
-            ]
-        ).split(r);
+        .constraints([
+            Constraint::Length((r.height - height) / 2),
+            Constraint::Length(height),
+            Constraint::Min(0),
+        ])
+        .split(r);
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Length((r.width - width) / 2),
             Constraint::Length(width),
             Constraint::Min(0),
-        ]).
-        split(l[1])[1]
+        ])
+        .split(l[1])[1]
+}
+
+#[derive(Debug)]
+pub struct Cell {
+    inner: Option<u8>,
+}
+
+impl Cell {
+    pub fn hex_str(&self) -> String {
+        if self.inner.is_none() {
+            String::from("xx")
+        } else {
+            format!("{:02x}", self.inner.unwrap())
+        }
+    }
 }
 
 pub mod app;

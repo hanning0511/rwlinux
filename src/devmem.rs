@@ -1,3 +1,4 @@
+use super::Cell;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use hex;
 use libc::{O_RDWR, O_SYNC};
@@ -169,21 +170,6 @@ enum Mode {
     Normal,
     Jump,
     Edit,
-}
-
-#[derive(Debug)]
-struct Cell {
-    inner: Option<u8>,
-}
-
-impl Cell {
-    fn hex_str(&self) -> String {
-        if self.inner.is_none() {
-            String::from("xx")
-        } else {
-            format!("{:02x}", self.inner.unwrap())
-        }
-    }
 }
 
 #[derive(Debug)]
