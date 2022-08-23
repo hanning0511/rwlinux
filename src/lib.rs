@@ -179,4 +179,3 @@ impl WriteValue {
 
 pub mod app;
 pub mod devmem;
-pub mod io;
