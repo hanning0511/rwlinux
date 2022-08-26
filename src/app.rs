@@ -1,32 +1,39 @@
-use super::devmem;
+use super::{
+    devmem::Devmem,
+    matrix::{init_terminal, reset_terminal, start, Matrix, Result},
+};
 use clap::{Parser, Subcommand};
-use std::error::Error;
 
 #[derive(Parser)]
 #[clap(
-    name("RW-Linux"),
     author("Han Ning <ning.han@intel.com>"),
     version("0.1"),
     about("Read Write on Linux")
 )]
-pub struct App {
+pub struct RwApp {
     #[clap(subcommand)]
-    command: Commands,
+    command: Command,
 }
 
 #[derive(Subcommand)]
-enum Commands {
-    /// Access physical memory through /dev/mem
+enum Command {
+    /// Access physical memory via /dev/mem node
     Devmem,
-    /// Access I/O space
-    Io,
 }
 
-pub fn run() -> Result<(), Box<dyn Error>> {
-    let app = App::parse();
+pub fn run() -> Result<()> {
+    let app = RwApp::parse();
 
     match app.command {
-        Commands::Devmem => devmem::run(),
-        Commands::Io => todo!(),
+        Command::Devmem => {
+            let mut terminal = init_terminal()?;
+            let mut dm: Matrix<Devmem> = Matrix::new("/dev/mem");
+            let res = start(&mut terminal, &mut dm);
+            reset_terminal()?;
+            if let Err(err) = res {
+                println!("{:?}", err);
+            }
+            Ok(())
+        }
     }
 }

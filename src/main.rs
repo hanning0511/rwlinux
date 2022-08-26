@@ -1,5 +1,7 @@
-use rw::app;
+pub mod app;
+pub mod devmem;
+pub mod matrix;
 
 fn main() {
-    app::run().expect("something is wrong!");
+    app::run().unwrap();
 }

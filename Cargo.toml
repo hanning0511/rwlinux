@@ -1,13 +1,13 @@
 [package]
-name = "rw"
+name = "rwlinux"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 clap = { version = "3.2.17", features = ["derive"] }
-tui = "0.18"
-crossterm = "0.23"
+crossterm = "0.25.0"
+tui = "0.19.0"
 memmap = "0.7.0"
+hex = "0.4.3"
 unicode-width = "0.1.9"
 libc = "0.2.132"
-hex = "0.4.3"
