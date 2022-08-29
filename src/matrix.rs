@@ -454,7 +454,7 @@ fn draw_edit<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>, area: R
 
 fn ui<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>) {
     let size = f.size();
-    let matrix_width = 3 * m.cols + 2;
+    let matrix_width = 3 * m.cols + 3;
     let matrix_height = m.rows;
     let padding_left = (size.width - matrix_width - 2) / 2;
     let padding_top = 1;
@@ -463,8 +463,7 @@ fn ui<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>) {
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Length(padding_left),
-            Constraint::Length(m.cols * 3),
-            Constraint::Length(2),
+            Constraint::Length(matrix_width),
             Constraint::Min(0),
         ])
         .split(size);
