@@ -469,7 +469,7 @@ fn draw_jump<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>, area: R
                 .borders(Borders::ALL)
                 .title_alignment(Alignment::Center),
         );
-    let area = centered_rect(40, 3, area);
+    let area = centered_rect(24, 3, area);
     f.render_widget(Clear, area);
     f.render_widget(input, area);
     match m.op_mode {
@@ -489,7 +489,7 @@ fn draw_edit<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>, area: R
                 .borders(Borders::ALL)
                 .title_alignment(Alignment::Center),
         );
-    let area = centered_rect(40, 3, area);
+    let area = centered_rect(24, 3, area);
 
     f.render_widget(Clear, area);
     f.render_widget(edit, area);
