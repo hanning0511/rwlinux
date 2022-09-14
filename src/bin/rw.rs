@@ -1,8 +1,8 @@
-use super::{
+use clap::{Parser, Subcommand};
+use rwlinux::{
     devmem::Devmem,
     matrix::{init_terminal, reset_terminal, start, Matrix, Result},
 };
-use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[clap(
@@ -36,4 +36,8 @@ pub fn run() -> Result<()> {
             Ok(())
         }
     }
+}
+
+fn main() {
+    run().unwrap();
 }

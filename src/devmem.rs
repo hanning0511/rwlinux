@@ -17,6 +17,32 @@ pub fn read_byte(offset: u64) -> Option<u8> {
     None
 }
 
+pub fn write(offset: u64, bytes: Vec<u8>) {
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(O_RDWR | O_SYNC)
+        .open(MEMDEV);
+    if file.is_err() {
+        println!("fail to open /dev/mem");
+        return;
+    }
+
+    let mmap = unsafe {
+        MmapOptions::new()
+            .offset(offset)
+            .len(bytes.len())
+            .map_mut(&file.unwrap())
+    };
+    if mmap.is_err() {
+        println!("fail to map /dev/mem");
+        return;
+    }
+    let mut mmap = mmap.unwrap();
+
+    mmap.copy_from_slice(&bytes)
+}
+
 pub struct Devmem {
     pub inner: Vec<Option<u8>>,
     pub size: u16,

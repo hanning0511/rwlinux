@@ -1,7 +1,6 @@
-pub mod app;
-pub mod devmem;
-pub mod matrix;
+use rwlinux::pci;
 
 fn main() {
-    app::run().unwrap();
+    let dev = pci::PciDevice::from_sysfs_dirname("0000:04:0f.5");
+    println!("{:?}", dev);
 }

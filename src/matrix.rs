@@ -170,8 +170,8 @@ pub struct Cell {
 impl Cell {
     pub fn hex(&self) -> String {
         match self.inner {
-            Some(byte) => format!("{:02x}", byte),
-            None => String::from("xx"),
+            Some(byte) => format!("{:02X}", byte),
+            None => String::from("XX"),
         }
     }
 
@@ -195,18 +195,39 @@ pub trait MatrixData {
     fn update(&mut self, start: u64);
     fn get(&self, index: usize) -> Option<Cell>;
 }
+
 pub enum OpMode {
     Normal,
     Jump,
     Write,
 }
+
+pub enum DataType {
+    Byte,
+    Word,
+    DoubleWord,
+    QuadWord,
+    DoubleQuadWord,
+}
+
+fn data_size(cell_type: &DataType) -> u64 {
+    match cell_type {
+        DataType::Byte => 1,
+        DataType::Word => 2,
+        DataType::DoubleWord => 4,
+        DataType::QuadWord => 8,
+        DataType::DoubleQuadWord => 16,
+    }
+}
+
 pub struct Matrix<T> {
     pub name: String,
-    pub cols: u16,
-    pub rows: u16,
+    pub col_size: u16,
+    pub row_size: u16,
     pub offset: u64,
     pub data: T,
     pub op_mode: OpMode,
+    pub cell_type: DataType,
     pub input: String,
 }
 
@@ -214,17 +235,18 @@ impl<T: MatrixData> Matrix<T> {
     pub fn new(name: &str) -> Self {
         Self {
             name: String::from(name),
-            cols: 16,
-            rows: 16,
+            col_size: 16,
+            row_size: 16,
             offset: 0,
             data: T::new(16 * 16),
             op_mode: OpMode::Normal,
+            cell_type: DataType::Byte,
             input: String::new(),
         }
     }
 
     pub fn page_size(&self) -> u64 {
-        (self.cols * self.rows) as u64
+        (self.col_size * self.row_size) as u64
     }
 
     pub fn page_offset(&self) -> u64 {
@@ -235,35 +257,38 @@ impl<T: MatrixData> Matrix<T> {
         self.offset - self.page_offset()
     }
 
-    pub fn next_byte(&mut self) {
-        self.offset += 1;
+    pub fn next_cell(&mut self) {
+        self.offset += data_size(&self.cell_type);
+
         if self.page_offset() == 0 {
             self.data.update(self.page_start());
         }
     }
 
-    pub fn prev_byte(&mut self) {
-        if self.offset >= 1 {
-            self.offset -= 1;
+    pub fn prev_cell(&mut self) {
+        let cell_size = data_size(&self.cell_type);
+
+        if self.offset >= cell_size {
+            self.offset -= cell_size;
         }
 
-        if self.page_offset() + 1 == self.page_size() {
+        if self.page_offset() + cell_size == self.page_size() {
             self.data.update(self.page_start())
         }
     }
 
     pub fn next_line(&mut self) {
-        self.offset += self.cols as u64;
-        if self.page_offset() <= self.cols as u64 {
+        self.offset += self.col_size as u64;
+        if self.page_offset() <= self.col_size as u64 {
             self.data.update(self.page_start());
         }
     }
 
     pub fn prev_line(&mut self) {
-        if self.offset >= self.cols as u64 {
-            self.offset -= self.cols as u64;
+        if self.offset >= self.col_size as u64 {
+            self.offset -= self.col_size as u64;
         }
-        if self.page_offset() >= self.page_size() - self.cols as u64 {
+        if self.page_offset() >= self.page_size() - self.col_size as u64 {
             self.data.update(self.page_start());
         }
     }
@@ -278,6 +303,11 @@ impl<T: MatrixData> Matrix<T> {
             self.offset -= self.page_size();
             self.data.update(self.page_start());
         }
+    }
+
+    pub fn set_cell_type(&mut self, cell_type: DataType) {
+        self.cell_type = cell_type;
+        self.offset -= self.offset % data_size(&self.cell_type)
     }
 
     fn jump(&mut self) {
@@ -312,12 +342,16 @@ pub fn start<B: Backend, T: MatrixData>(
                     // Quit application
                     KeyCode::Char('q') => return Ok(()),
                     // Hex matrix navigations
-                    KeyCode::Char('h') | KeyCode::Left => m.prev_byte(),
-                    KeyCode::Char('l') | KeyCode::Right => m.next_byte(),
+                    KeyCode::Char('h') | KeyCode::Left => m.prev_cell(),
+                    KeyCode::Char('l') | KeyCode::Right => m.next_cell(),
                     KeyCode::Char('k') | KeyCode::Up => m.prev_line(),
                     KeyCode::Char('j') | KeyCode::Down => m.next_line(),
                     KeyCode::Char('p') | KeyCode::PageUp => m.prev_page(),
                     KeyCode::Char('n') | KeyCode::PageDown => m.next_page(),
+                    KeyCode::Char('B') => m.set_cell_type(DataType::Byte),
+                    KeyCode::Char('W') => m.set_cell_type(DataType::Word),
+                    KeyCode::Char('D') => m.set_cell_type(DataType::DoubleWord),
+                    KeyCode::Char('Q') => m.set_cell_type(DataType::QuadWord),
                     // Interactions
                     KeyCode::Char('J') => {
                         m.input.clear();
@@ -359,34 +393,48 @@ fn header<B: Backend, T: MatrixData>(f: &mut Frame<B>, app: &Matrix<T>, area: Re
 }
 
 fn hex_matrix<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>, area: Rect) {
-    // Here, cell length is 2, height is 1
-    let row_cons = std::iter::repeat(Constraint::Length(1))
-        .take(m.rows as usize)
+    // calculate cell size base on cell_type of matrix
+    let cell_size = data_size(&m.cell_type);
+
+    let row_constraints = std::iter::repeat(Constraint::Length(1))
+        .take(m.row_size as usize)
         .collect::<Vec<_>>();
-    let col_cons = std::iter::repeat(Constraint::Length(3))
-        .take(m.cols as usize)
+
+    // calculate cell width based on cell size, each byte takes 2 units
+    // then add 1 unit as padding
+    let col_constraints = std::iter::repeat(Constraint::Length((cell_size as u16) * 2 + 1))
+        .take((m.col_size / cell_size as u16) as usize)
         .collect::<Vec<_>>();
 
     // draw hex matrix
     let row_rects = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(row_cons)
+        .constraints(row_constraints)
         .split(area);
+
     for (r, row_rect) in row_rects.into_iter().enumerate() {
         let col_rects = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints(col_cons.to_owned())
+            .constraints(col_constraints.to_owned())
             .split(row_rect);
+
         for (c, col_rect) in col_rects.into_iter().enumerate() {
-            let index = r * (m.cols as usize) + c;
-            let cell_str = match m.data.get(index) {
-                Some(cell) => cell.hex(),
-                None => String::from("xx"),
-            };
+            let index = r * (m.col_size as usize) + c * cell_size as usize;
+            let mut cell_str = String::new();
+
+            // use little endiannes
+            for i in (index..(index + cell_size as usize)).rev() {
+                let s = match m.data.get(i) {
+                    Some(cell) => cell.hex(),
+                    None => String::from("XX"),
+                };
+                cell_str.push_str(s.as_str());
+            }
+
             if m.page_offset() as usize == index {
                 let cb = Paragraph::new(cell_str)
                     .block(Block::default())
-                    .style(Style::default().fg(Color::Red))
+                    .style(Style::default().fg(Color::LightRed))
                     .alignment(Alignment::Left);
                 f.render_widget(cb, col_rect);
             } else {
@@ -401,8 +449,8 @@ fn hex_matrix<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>, area: 
 
 fn status<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>, area: Rect) {
     let mut content = String::new();
-    content.push_str(format!("Page Offset:   0x{:x}\n", m.page_offset()).as_str());
-    content.push_str(format!("Global Offset: 0x{:x}\n", m.offset).as_str());
+    content.push_str(format!("Offset:      0x{:X}\n", m.offset).as_str());
+    content.push_str(format!("Page Offset: 0x{:02X}\n", m.page_offset()).as_str());
 
     let block = Paragraph::new(content)
         .block(Block::default())
@@ -454,8 +502,9 @@ fn draw_edit<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>, area: R
 
 fn ui<B: Backend, T: MatrixData>(f: &mut Frame<B>, m: &Matrix<T>) {
     let size = f.size();
-    let matrix_width = 3 * m.cols + 3;
-    let matrix_height = m.rows;
+    let cell_size = data_size(&m.cell_type);
+    let matrix_width = ((cell_size * 2 + 1) as u16) * (m.col_size / cell_size as u16) + 3;
+    let matrix_height = m.row_size;
     let padding_left = (size.width - matrix_width - 2) / 2;
     let padding_top = 1;
 

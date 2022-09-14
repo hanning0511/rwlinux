@@ -1,0 +1,19 @@
+.editor-table {
+    font-size: 12px;
+    /* border: 2px solid; */
+    border-collapse: separate;
+    border-spacing: 5px 5px;
+    text-align: center;
+    height: 400px;
+    width: 400px;
+}
+
+.editor-tr {
+    line-height: 15px;
+}
+
+.editor-td {
+    padding: 0 auto;
+    width: 20px;
+    border: 1px solid green;
+}
